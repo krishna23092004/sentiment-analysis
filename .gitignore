@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual Environment
+venv/
+env/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Streamlit
+.streamlit/
+
+# Model files (optional if large)
+# model.pth
+# vectorizer.pkl
+
+# Logs
+*.log
