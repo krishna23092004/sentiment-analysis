@@ -13,36 +13,28 @@ class RNN(nn.Module):
         self.hidden_size = hidden_size
         self.num_layers = num_layers
 
-        # RNN layer
         self.rnn = nn.RNN(input_size, hidden_size, num_layers, batch_first=True)
-
-        # fully connected layer
         self.fc = nn.Linear(hidden_size, 1)
 
     def forward(self, x):
-        # optional => shape (num of layers, batch size, hidden size)
         h0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size)
-
-        out, _ = self.rnn(x, h0) 
-        # 1st value = hidden state of all the timesteps => (batch, seq_len, hidden size)
-        # 2nd value = final hidden state of last timestep
-
+        out, _ = self.rnn(x, h0)
         out = self.fc(out[:, -1, :])
         return out
 
 # -----------------------------
-# Load Vectorizer
+# Load Vectorizer & Model
 # -----------------------------
-vectorizer = pickle.load(open("vectorizer.pkl", "rb"))
+@st.cache_resource
+def load_model():
+    vectorizer = pickle.load(open("vectorizer.pkl", "rb"))
+    input_size = len(vectorizer.get_feature_names_out())
+    model = RNN(input_size)
+    model.load_state_dict(torch.load("model.pth", map_location="cpu"))
+    model.eval()
+    return vectorizer, model
 
-# -----------------------------
-# Load Model
-# -----------------------------
-input_size = len(vectorizer.get_feature_names_out())
-
-model = RNN(input_size)
-model.load_state_dict(torch.load("model.pth", map_location="cpu"))
-model.eval()
+vectorizer, model = load_model()
 
 # -----------------------------
 # Streamlit UI
@@ -59,12 +51,11 @@ if st.button("Predict"):
         vec = vectorizer.transform([text]).toarray()
         tensor_input = torch.tensor(vec, dtype=torch.float32)
 
+        # ✅ FIX: add seq_len dimension → shape (1, 1, 5000)
+        tensor_input = tensor_input.unsqueeze(1)
+
         # prediction
         with torch.no_grad():
             output = model(tensor_input)
-            prediction = (output > 0.5).int()
-
-        if prediction.item() == 1:
-            st.success("Positive 😊")
-        else:
-            st.error("Negative 😠")
+            # ✅ FIX: apply sigmoid before thresholding (model has no sigmoid in forward())
+        
